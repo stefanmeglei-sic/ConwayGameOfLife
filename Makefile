@@ -7,7 +7,7 @@ BIN_DIR := bin
 SRC_DIR := src
 INCLUDE_DIR := include
 
-COMMON_SRCS := $(SRC_DIR)/life.c
+COMMON_SRCS := $(SRC_DIR)/life.c $(SRC_DIR)/life_log.c
 SERIAL_SRCS := $(COMMON_SRCS) $(SRC_DIR)/serial_main.c
 MPI_SRCS := $(COMMON_SRCS) $(SRC_DIR)/mpi_main.c
 

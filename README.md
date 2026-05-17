@@ -50,6 +50,26 @@ If MPI is installed in a non-default location:
 make mpi MPICC=/path/to/mpicc
 ```
 
+## Logging
+
+The executables now include centralized logging for startup, argument errors, allocation failures, and output failures.
+
+Environment variables:
+
+- `LIFE_LOG_LEVEL=error|warn|info|debug` (default: `info`)
+- `LIFE_LOG_FILE=/path/prefix` to also write logs to files
+
+When `LIFE_LOG_FILE` is set, logs are written to per-component, per-rank files:
+
+- `/path/prefix.serial.rank0.log`
+- `/path/prefix.mpi.rankN.log`
+
+Example:
+
+```sh
+LIFE_LOG_LEVEL=debug LIFE_LOG_FILE=coverage/life_log mpirun -n 4 ./bin/life_mpi --width 128 --height 128 --steps 50 --pattern random --validate
+```
+
 ## Run
 
 Serial:

@@ -1,4 +1,5 @@
 #include "life.h"
+#include "life_log.h"
 
 #include <mpi.h>
 #include <stdio.h>
@@ -302,7 +303,7 @@ static int run_mpi_2d(const life_options_t *options, int rank, int size) {
     MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periods, 0, &cart_comm);
     if (cart_comm == MPI_COMM_NULL) {
         if (rank == 0) {
-            fprintf(stderr, "Failed to create 2D Cartesian communicator\n");
+            LIFE_LOG_ERROR("Failed to create 2D Cartesian communicator");
         }
         return EXIT_FAILURE;
     }
@@ -311,12 +312,11 @@ static int run_mpi_2d(const life_options_t *options, int rank, int size) {
 
     if (options->height < dims[0] || options->width < dims[1]) {
         if (rank == 0) {
-            fprintf(stderr,
-                    "2D decomposition requires height >= %d and width >= %d (got %d x %d)\n",
-                    dims[0],
-                    dims[1],
-                    options->height,
-                    options->width);
+            LIFE_LOG_ERROR("2D decomposition requires height >= %d and width >= %d (got %d x %d)",
+                           dims[0],
+                           dims[1],
+                           options->height,
+                           options->width);
         }
         MPI_Comm_free(&cart_comm);
         return EXIT_FAILURE;
@@ -336,7 +336,7 @@ static int run_mpi_2d(const life_options_t *options, int rank, int size) {
     next = (uint8_t *) calloc((size_t) (local_h + 2) * (size_t) (local_w + 2), sizeof(uint8_t));
     if (current == NULL || next == NULL) {
         if (rank == 0) {
-            fprintf(stderr, "Failed to allocate 2D local grids\n");
+            LIFE_LOG_ERROR("Failed to allocate 2D local grids");
         }
         free(current);
         free(next);
@@ -348,7 +348,7 @@ static int run_mpi_2d(const life_options_t *options, int rank, int size) {
         int target_rank;
         global_initial = life_allocate_grid(options->width, options->height);
         if (global_initial == NULL) {
-            fprintf(stderr, "Failed to allocate global initial grid\n");
+            LIFE_LOG_ERROR("Failed to allocate global initial grid");
             free(current);
             free(next);
             MPI_Comm_free(&cart_comm);
@@ -359,7 +359,7 @@ static int run_mpi_2d(const life_options_t *options, int rank, int size) {
         if (need_gathered_grid) {
             global_final = life_allocate_grid(options->width, options->height);
             if (global_final == NULL) {
-                fprintf(stderr, "Failed to allocate global gather grid\n");
+                LIFE_LOG_ERROR("Failed to allocate global gather grid");
                 free(global_initial);
                 free(current);
                 free(next);
@@ -371,7 +371,7 @@ static int run_mpi_2d(const life_options_t *options, int rank, int size) {
         if (options->validate) {
             serial_final = life_allocate_grid(options->width, options->height);
             if (serial_final == NULL) {
-                fprintf(stderr, "Failed to allocate serial validation grid\n");
+                LIFE_LOG_ERROR("Failed to allocate serial validation grid");
                 free(global_initial);
                 free(global_final);
                 free(current);
@@ -398,7 +398,7 @@ static int run_mpi_2d(const life_options_t *options, int rank, int size) {
             tsize = th * tw;
             packed = (uint8_t *) malloc((size_t) tsize);
             if (packed == NULL) {
-                fprintf(stderr, "Failed to allocate temporary init block\n");
+                LIFE_LOG_ERROR("Failed to allocate temporary init block");
                 free(global_initial);
                 free(global_final);
                 free(serial_final);
@@ -580,7 +580,7 @@ static int run_mpi_2d(const life_options_t *options, int rank, int size) {
                                   dims,
                                   global_final)) {
                 if (rank == 0) {
-                    fprintf(stderr, "Failed to gather 2D snapshot\n");
+                    LIFE_LOG_ERROR("Failed to gather 2D snapshot");
                 }
                 free(global_initial);
                 free(global_final);
@@ -592,7 +592,7 @@ static int run_mpi_2d(const life_options_t *options, int rank, int size) {
             }
 
             if (rank == 0 && !write_step_snapshot(options->snapshot_prefix, step + 1, global_final, options->width, options->height)) {
-                fprintf(stderr, "Failed to write step snapshot for step %d\n", step + 1);
+                LIFE_LOG_ERROR("Failed to write step snapshot for step %d", step + 1);
             }
         }
     }
@@ -616,7 +616,7 @@ static int run_mpi_2d(const life_options_t *options, int rank, int size) {
                               dims,
                               global_final)) {
             if (rank == 0) {
-                fprintf(stderr, "Failed final 2D gather\n");
+                LIFE_LOG_ERROR("Failed final 2D gather");
             }
             free(global_initial);
             free(global_final);
@@ -642,7 +642,7 @@ static int run_mpi_2d(const life_options_t *options, int rank, int size) {
 
         if (options->pgm_final_path[0] != '\0') {
             if (!life_write_pgm(options->pgm_final_path, global_final, options->width, options->height)) {
-                fprintf(stderr, "Failed to write PGM file: %s\n", options->pgm_final_path);
+                LIFE_LOG_ERROR("Failed to write PGM file: %s", options->pgm_final_path);
             }
         }
 
@@ -691,30 +691,35 @@ int main(int argc, char **argv) {
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
+    life_log_init("mpi", rank);
+    LIFE_LOG_INFO("MPI runner started with %d ranks", size);
 
     if (!life_parse_options(argc, argv, &options, &error_message)) {
         if (rank == 0) {
             if (error_message != NULL) {
-                fprintf(stderr, "Argument error: %s\n", error_message);
+                LIFE_LOG_ERROR("Argument error: %s", error_message);
             }
             life_print_usage(argv[0]);
         }
+        life_log_shutdown();
         MPI_Finalize();
         return EXIT_FAILURE;
     }
 
     if (options.decomposition_2d) {
         int status = run_mpi_2d(&options, rank, size);
+        life_log_shutdown();
         MPI_Finalize();
         return status;
     }
 
     if (options.height < size) {
         if (rank == 0) {
-            fprintf(stderr, "This baseline requires height >= number of MPI ranks (height=%d, ranks=%d)\n",
-                    options.height,
-                    size);
+            LIFE_LOG_ERROR("This baseline requires height >= number of MPI ranks (height=%d, ranks=%d)",
+                           options.height,
+                           size);
         }
+        life_log_shutdown();
         MPI_Finalize();
         return EXIT_FAILURE;
     }
@@ -737,12 +742,13 @@ int main(int argc, char **argv) {
     displacements = (int *) malloc((size_t) size * sizeof(int));
     if (current == NULL || next == NULL || counts == NULL || displacements == NULL) {
         if (rank == 0) {
-            fprintf(stderr, "Failed to allocate MPI buffers\n");
+            LIFE_LOG_ERROR("Failed to allocate MPI buffers");
         }
         free(current);
         free(next);
         free(counts);
         free(displacements);
+        life_log_shutdown();
         MPI_Finalize();
         return EXIT_FAILURE;
     }
@@ -752,11 +758,12 @@ int main(int argc, char **argv) {
     if (rank == 0) {
         global_initial = life_allocate_grid(options.width, options.height);
         if (global_initial == NULL) {
-            fprintf(stderr, "Failed to allocate global initial grid\n");
+            LIFE_LOG_ERROR("Failed to allocate global initial grid");
             free(current);
             free(next);
             free(counts);
             free(displacements);
+            life_log_shutdown();
             MPI_Finalize();
             return EXIT_FAILURE;
         }
@@ -770,7 +777,7 @@ int main(int argc, char **argv) {
         }
 
         if (need_gathered_grid && global_final == NULL) {
-            fprintf(stderr, "Failed to allocate gathered global grid\n");
+            LIFE_LOG_ERROR("Failed to allocate gathered global grid");
             free(global_initial);
             free(global_final);
             free(serial_final);
@@ -778,12 +785,13 @@ int main(int argc, char **argv) {
             free(next);
             free(counts);
             free(displacements);
+            life_log_shutdown();
             MPI_Finalize();
             return EXIT_FAILURE;
         }
 
         if (options.validate && serial_final == NULL) {
-            fprintf(stderr, "Failed to allocate serial validation grid\n");
+            LIFE_LOG_ERROR("Failed to allocate serial validation grid");
             free(global_initial);
             free(global_final);
             free(serial_final);
@@ -791,6 +799,7 @@ int main(int argc, char **argv) {
             free(next);
             free(counts);
             free(displacements);
+            life_log_shutdown();
             MPI_Finalize();
             return EXIT_FAILURE;
         }
@@ -863,7 +872,7 @@ int main(int argc, char **argv) {
                         MPI_COMM_WORLD);
 
             if (rank == 0 && !write_step_snapshot(options.snapshot_prefix, step + 1, global_final, options.width, options.height)) {
-                fprintf(stderr, "Failed to write step snapshot for step %d\n", step + 1);
+                LIFE_LOG_ERROR("Failed to write step snapshot for step %d", step + 1);
             }
         }
     }
@@ -901,7 +910,7 @@ int main(int argc, char **argv) {
 
         if (options.pgm_final_path[0] != '\0') {
             if (!life_write_pgm(options.pgm_final_path, global_final, options.width, options.height)) {
-                fprintf(stderr, "Failed to write PGM file: %s\n", options.pgm_final_path);
+                LIFE_LOG_ERROR("Failed to write PGM file: %s", options.pgm_final_path);
             }
         }
 
@@ -918,6 +927,8 @@ int main(int argc, char **argv) {
     free(counts);
     free(displacements);
 
+    LIFE_LOG_INFO("MPI runner finished successfully");
+    life_log_shutdown();
     MPI_Finalize();
     return EXIT_SUCCESS;
 }

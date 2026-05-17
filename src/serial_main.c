@@ -1,4 +1,5 @@
 #include "life.h"
+#include "life_log.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,20 +11,25 @@ int main(int argc, char **argv) {
     uint8_t *final_grid = NULL;
     life_timing_t timing = {0.0, 0.0, 0.0};
 
+    life_log_init("serial", 0);
+    LIFE_LOG_INFO("Serial runner started");
+
     if (!life_parse_options(argc, argv, &options, &error_message)) {
         if (error_message != NULL) {
-            fprintf(stderr, "Argument error: %s\n", error_message);
+            LIFE_LOG_ERROR("Argument error: %s", error_message);
         }
         life_print_usage(argv[0]);
+        life_log_shutdown();
         return EXIT_FAILURE;
     }
 
     initial = life_allocate_grid(options.width, options.height);
     final_grid = life_allocate_grid(options.width, options.height);
     if (initial == NULL || final_grid == NULL) {
-        fprintf(stderr, "Failed to allocate serial grids\n");
+        LIFE_LOG_ERROR("Failed to allocate serial grids (width=%d, height=%d)", options.width, options.height);
         free(initial);
         free(final_grid);
+        life_log_shutdown();
         return EXIT_FAILURE;
     }
 
@@ -38,11 +44,13 @@ int main(int argc, char **argv) {
 
     if (options.pgm_final_path[0] != '\0') {
         if (!life_write_pgm(options.pgm_final_path, final_grid, options.width, options.height)) {
-            fprintf(stderr, "Failed to write PGM file: %s\n", options.pgm_final_path);
+            LIFE_LOG_ERROR("Failed to write PGM file: %s", options.pgm_final_path);
             free(initial);
             free(final_grid);
+            life_log_shutdown();
             return EXIT_FAILURE;
         }
+        LIFE_LOG_INFO("Wrote final PGM snapshot to %s", options.pgm_final_path);
     }
 
     if (options.dump_final) {
@@ -51,5 +59,7 @@ int main(int argc, char **argv) {
 
     free(initial);
     free(final_grid);
+    LIFE_LOG_INFO("Serial runner finished successfully");
+    life_log_shutdown();
     return EXIT_SUCCESS;
 }
