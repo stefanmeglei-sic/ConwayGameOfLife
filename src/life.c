@@ -383,6 +383,28 @@ int life_engine_step(life_engine_t *engine) {
     return 1;
 }
 
+int life_engine_run(life_engine_t *engine, int steps, life_generation_callback_t callback, void *user_data) {
+    int step;
+
+    if (engine == NULL || steps < 0) {
+        return 0;
+    }
+
+    for (step = 0; step < steps; ++step) {
+        if (!life_engine_step(engine)) {
+            return 0;
+        }
+
+        if (callback != NULL) {
+            if (!callback(engine, user_data)) {
+                return 0;
+            }
+        }
+    }
+
+    return 1;
+}
+
 const uint8_t *life_engine_current_grid(const life_engine_t *engine) {
     if (engine == NULL) {
         return NULL;
@@ -402,6 +424,41 @@ void life_engine_copy_current(const life_engine_t *engine, uint8_t *dest) {
         return;
     }
     life_copy_grid(dest, engine->current, engine->width, engine->height);
+}
+
+int life_run_with_options(const life_options_t *options,
+                          uint8_t *final_grid,
+                          life_timing_t *timing,
+                          life_generation_callback_t callback,
+                          void *user_data) {
+    life_engine_t engine;
+    clock_t start_clock;
+    clock_t end_clock;
+
+    if (options == NULL || final_grid == NULL) {
+        return 0;
+    }
+
+    if (!life_engine_init(&engine, options->width, options->height, options)) {
+        return 0;
+    }
+
+    start_clock = clock();
+    if (!life_engine_run(&engine, options->steps, callback, user_data)) {
+        life_engine_destroy(&engine);
+        return 0;
+    }
+    end_clock = clock();
+
+    life_engine_copy_current(&engine, final_grid);
+    if (timing != NULL) {
+        timing->total_seconds = (double) (end_clock - start_clock) / (double) CLOCKS_PER_SEC;
+        timing->communication_seconds = 0.0;
+        timing->computation_seconds = timing->total_seconds;
+    }
+
+    life_engine_destroy(&engine);
+    return 1;
 }
 
 int life_write_pgm(const char *path, const uint8_t *grid, int width, int height) {

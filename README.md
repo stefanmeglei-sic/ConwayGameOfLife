@@ -76,11 +76,24 @@ The serial simulation backend is now exposed through an engine API in [include/l
 
 - `life_engine_init`
 - `life_engine_step`
+- `life_engine_run`
 - `life_engine_current_grid`
 - `life_engine_copy_current`
 - `life_engine_destroy`
 
+Shared run adapter:
+
+- `life_run_with_options`
+
 The CLI serial runner uses this engine directly, so future optional UI modes can reuse the exact same backend stepping logic instead of duplicating simulation rules.
+
+Generation callback hook:
+
+- `life_engine_run` accepts a callback of type `life_generation_callback_t`.
+- The callback is invoked after each completed generation.
+- Returning `0` from the callback stops the run, which is useful for UI controls such as pause/stop or stepping.
+
+This keeps UI concerns out of the simulation rules while preserving the same backend behavior for headless and SSH-friendly runs.
 
 ## Run
 

@@ -1,4 +1,3 @@
-#include <time.h>
 #include "life.h"
 #include "life_log.h"
 
@@ -9,11 +8,7 @@ int main(int argc, char **argv) {
     life_options_t options;
     const char *error_message = NULL;
     uint8_t *final_grid = NULL;
-    life_engine_t engine;
     life_timing_t timing = {0.0, 0.0, 0.0};
-    clock_t start_clock;
-    clock_t end_clock;
-    int step;
 
     life_log_init("serial", 0);
     LIFE_LOG_INFO("Serial runner started");
@@ -35,29 +30,15 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    if (!life_engine_init(&engine, options.width, options.height, &options)) {
-        LIFE_LOG_ERROR("Failed to initialize backend engine (width=%d, height=%d)", options.width, options.height);
+    if (!life_run_with_options(&options, final_grid, &timing, NULL, NULL)) {
+        LIFE_LOG_ERROR("Backend run failed (width=%d, height=%d, steps=%d)",
+                       options.width,
+                       options.height,
+                       options.steps);
         free(final_grid);
         life_log_shutdown();
         return EXIT_FAILURE;
     }
-
-    start_clock = clock();
-    for (step = 0; step < options.steps; ++step) {
-        if (!life_engine_step(&engine)) {
-            LIFE_LOG_ERROR("Backend step failed at generation %d", life_engine_generation(&engine));
-            life_engine_destroy(&engine);
-            free(final_grid);
-            life_log_shutdown();
-            return EXIT_FAILURE;
-        }
-    }
-    end_clock = clock();
-
-    life_engine_copy_current(&engine, final_grid);
-    timing.total_seconds = (double) (end_clock - start_clock) / (double) CLOCKS_PER_SEC;
-    timing.communication_seconds = 0.0;
-    timing.computation_seconds = timing.total_seconds;
 
     printf("serial: width=%d height=%d steps=%d total_seconds=%.6f\n",
            options.width,
@@ -79,7 +60,6 @@ int main(int argc, char **argv) {
         life_dump_grid_ascii(final_grid, options.width, options.height);
     }
 
-    life_engine_destroy(&engine);
     free(final_grid);
     LIFE_LOG_INFO("Serial runner finished successfully");
     life_log_shutdown();
