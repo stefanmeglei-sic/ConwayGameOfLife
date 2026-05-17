@@ -84,7 +84,14 @@ void life_log_message(life_log_level_t level, const char *source_file, int sourc
     }
 
     now = time(NULL);
-    localtime_r(&now, &tm_now);
+    {
+        struct tm *tm_ptr = localtime(&now);
+        if (tm_ptr != NULL) {
+            tm_now = *tm_ptr;
+        } else {
+            memset(&tm_now, 0, sizeof(tm_now));
+        }
+    }
     strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &tm_now);
 
     fprintf(stderr,

@@ -70,6 +70,18 @@ Example:
 LIFE_LOG_LEVEL=debug LIFE_LOG_FILE=coverage/life_log mpirun -n 4 ./bin/life_mpi --width 128 --height 128 --steps 50 --pattern random --validate
 ```
 
+## Backend Single Source of Truth
+
+The serial simulation backend is now exposed through an engine API in [include/life.h](include/life.h):
+
+- `life_engine_init`
+- `life_engine_step`
+- `life_engine_current_grid`
+- `life_engine_copy_current`
+- `life_engine_destroy`
+
+The CLI serial runner uses this engine directly, so future optional UI modes can reuse the exact same backend stepping logic instead of duplicating simulation rules.
+
 ## Run
 
 Serial:

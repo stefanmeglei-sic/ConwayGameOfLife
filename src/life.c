@@ -265,39 +265,32 @@ void life_step_serial(const uint8_t *current, uint8_t *next, int width, int heig
 }
 
 void life_run_serial(const uint8_t *initial, uint8_t *final_grid, int width, int height, int steps, life_timing_t *timing) {
-    uint8_t *current = life_allocate_grid(width, height);
-    uint8_t *next = life_allocate_grid(width, height);
+    life_engine_t engine;
     int step;
     clock_t start_clock;
     clock_t end_clock;
 
-    if (current == NULL || next == NULL) {
-        free(current);
-        free(next);
+    if (!life_engine_init_from_grid(&engine, width, height, initial)) {
         return;
     }
 
-    life_copy_grid(current, initial, width, height);
-
     start_clock = clock();
     for (step = 0; step < steps; ++step) {
-        uint8_t *swap_grid;
-        life_step_serial(current, next, width, height);
-        swap_grid = current;
-        current = next;
-        next = swap_grid;
+        if (!life_engine_step(&engine)) {
+            life_engine_destroy(&engine);
+            return;
+        }
     }
     end_clock = clock();
 
-    life_copy_grid(final_grid, current, width, height);
+    life_engine_copy_current(&engine, final_grid);
     if (timing != NULL) {
         timing->total_seconds = (double) (end_clock - start_clock) / (double) CLOCKS_PER_SEC;
         timing->communication_seconds = 0.0;
         timing->computation_seconds = timing->total_seconds;
     }
 
-    free(current);
-    free(next);
+    life_engine_destroy(&engine);
 }
 
 void life_dump_grid_ascii(const uint8_t *grid, int width, int height) {
@@ -313,6 +306,102 @@ void life_dump_grid_ascii(const uint8_t *grid, int width, int height) {
 
 int life_compare_grids(const uint8_t *left, const uint8_t *right, int width, int height) {
     return memcmp(left, right, life_grid_size(width, height) * sizeof(uint8_t)) == 0;
+}
+
+int life_engine_init(life_engine_t *engine, int width, int height, const life_options_t *options) {
+    if (engine == NULL || options == NULL) {
+        return 0;
+    }
+
+    engine->width = width;
+    engine->height = height;
+    engine->generation = 0;
+    engine->current = life_allocate_grid(width, height);
+    engine->next = life_allocate_grid(width, height);
+
+    if (engine->current == NULL || engine->next == NULL) {
+        free(engine->current);
+        free(engine->next);
+        engine->current = NULL;
+        engine->next = NULL;
+        return 0;
+    }
+
+    life_initialize_grid(engine->current, width, height, options);
+    return 1;
+}
+
+int life_engine_init_from_grid(life_engine_t *engine, int width, int height, const uint8_t *initial_grid) {
+    if (engine == NULL || initial_grid == NULL) {
+        return 0;
+    }
+
+    engine->width = width;
+    engine->height = height;
+    engine->generation = 0;
+    engine->current = life_allocate_grid(width, height);
+    engine->next = life_allocate_grid(width, height);
+
+    if (engine->current == NULL || engine->next == NULL) {
+        free(engine->current);
+        free(engine->next);
+        engine->current = NULL;
+        engine->next = NULL;
+        return 0;
+    }
+
+    life_copy_grid(engine->current, initial_grid, width, height);
+    return 1;
+}
+
+void life_engine_destroy(life_engine_t *engine) {
+    if (engine == NULL) {
+        return;
+    }
+
+    free(engine->current);
+    free(engine->next);
+    engine->current = NULL;
+    engine->next = NULL;
+    engine->width = 0;
+    engine->height = 0;
+    engine->generation = 0;
+}
+
+int life_engine_step(life_engine_t *engine) {
+    uint8_t *swap_grid;
+
+    if (engine == NULL || engine->current == NULL || engine->next == NULL) {
+        return 0;
+    }
+
+    life_step_serial(engine->current, engine->next, engine->width, engine->height);
+    swap_grid = engine->current;
+    engine->current = engine->next;
+    engine->next = swap_grid;
+    engine->generation += 1;
+    return 1;
+}
+
+const uint8_t *life_engine_current_grid(const life_engine_t *engine) {
+    if (engine == NULL) {
+        return NULL;
+    }
+    return engine->current;
+}
+
+int life_engine_generation(const life_engine_t *engine) {
+    if (engine == NULL) {
+        return 0;
+    }
+    return engine->generation;
+}
+
+void life_engine_copy_current(const life_engine_t *engine, uint8_t *dest) {
+    if (engine == NULL || dest == NULL || engine->current == NULL) {
+        return;
+    }
+    life_copy_grid(dest, engine->current, engine->width, engine->height);
 }
 
 int life_write_pgm(const char *path, const uint8_t *grid, int width, int height) {
