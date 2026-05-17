@@ -22,15 +22,20 @@ This plan is meant to stay live and evolve with the code.
 - non-blocking 2D halo exchange (rows, columns, corners): complete baseline
 - deterministic initialization patterns: complete baseline
 - serial-vs-MPI validation hook: complete baseline
+- centralized rank-aware logging: complete baseline
+- generation callback mechanism for UI integration: complete baseline
+- backend engine API + shared run adapter: complete baseline
 - VS Code tasks and shell scripts for local iteration: complete baseline
+- **SDL2 graphical UI (optional, phase 1)**: in progress
 
 ## Next iterations
 
-1. Add finer communication timing split: post, wait, gather by direction.
-2. Add support for larger input files instead of generated initial states only.
-3. Add a small regression suite for stable patterns and oscillators in both 1D and 2D.
-4. Add optional UI mode with adjustable speed, while preserving headless SSH workflow.
-5. Keep backend simulation logic UI-agnostic so CLI and UI share the same engine.
+1. Complete SDL2 graphical UI with smooth rendering and all controls.
+2. Add terminal/ncurses UI (viewport mode) for SSH-friendly interactive viewing.
+3. Add finer communication timing split: post, wait, gather by direction.
+4. Add support for larger input files instead of generated initial states only.
+5. Add a small regression suite for stable patterns and oscillators in both 1D and 2D.
+6. Performance tuning and profiling with various grid sizes and decomposition modes.
 
 ## Constraints discovered in this environment
 

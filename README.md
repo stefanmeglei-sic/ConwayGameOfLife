@@ -42,6 +42,7 @@ sudo apt install openmpi-bin libopenmpi-dev
 ```sh
 make serial
 make mpi
+make ui       # requires SDL2 (see below)
 ```
 
 If MPI is installed in a non-default location:
@@ -49,6 +50,29 @@ If MPI is installed in a non-default location:
 ```sh
 make mpi MPICC=/path/to/mpicc
 ```
+
+### SDL2 Graphical UI
+
+The optional SDL2 graphical UI is built with `make ui` if SDL2 development libraries are detected.
+
+**Installation:**
+
+Ubuntu/Debian:
+```sh
+sudo apt install libsdl2-dev pkg-config
+```
+
+Fedora/RHEL:
+```sh
+sudo dnf install SDL2-devel pkg-config
+```
+
+macOS:
+```sh
+brew install sdl2 pkg-config
+```
+
+Once installed, the `life_ui` binary will be a full graphical application. If SDL2 is not installed, the UI binary will be a stub that prints an error.
 
 ## Logging
 
@@ -138,6 +162,46 @@ MPI periodic snapshots every 20 generations:
 ```sh
 mpirun -n 4 ./bin/life_mpi --width 128 --height 128 --steps 200 --pattern random --seed 7 --density 0.30 --snapshot-every 20 --snapshot-prefix coverage/life
 ```
+
+### SDL2 Graphical UI
+
+The graphical UI is **interactive and menu-driven**. It starts with a configuration menu where you can set the game parameters, then displays the simulation in a window.
+
+```sh
+./bin/life_ui
+```
+
+You can also pass default parameters on the command line:
+
+```sh
+./bin/life_ui --width 256 --height 256 --steps 1000 --pattern glider --seed 42
+```
+
+**Menu Controls:**
+
+- **Arrow Keys** (Left/Right) – Adjust selected parameter
+- **Arrow Keys** (Up/Down) – Navigate menu options
+- **R** – Generate random seed
+- **Space** – Start simulation
+- **Q** – Quit
+
+**Simulation Controls (while running or paused):**
+
+- **Space** – Pause/resume simulation
+- **Enter** or **P** – Resume running after a pause
+- **N** – Single step one generation (while paused)
+- **Arrow Keys** – Pan camera around the grid (while paused)
+- **I** – Zoom in
+- **O** – Zoom out
+- **M** – Return to menu
+- **Q** or **Esc** – Quit
+
+**Notes:**
+
+- The UI requires a display server (X11, Wayland, Windows, macOS).
+- For headless SSH servers, use the serial or MPI CLI targets.
+- The UI uses the same backend engine as the serial simulator, so behavior is identical.
+- Logging still works: `LIFE_LOG_LEVEL=info LIFE_LOG_FILE=coverage/ui_log ./bin/life_ui ...`
 
 ## Command line options
 
