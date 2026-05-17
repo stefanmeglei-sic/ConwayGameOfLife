@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define LIFE_PATH_MAX 256
+
 typedef enum {
     LIFE_PATTERN_RANDOM = 0,
     LIFE_PATTERN_GLIDER,
@@ -21,6 +23,12 @@ typedef struct {
     life_pattern_t pattern;
     int dump_final;
     int validate;
+    int csv;
+    int csv_header;
+    int snapshot_every;
+    char snapshot_prefix[LIFE_PATH_MAX];
+    char pgm_final_path[LIFE_PATH_MAX];
+    int decomposition_2d;
 } life_options_t;
 
 typedef struct {
@@ -40,6 +48,7 @@ void life_step_serial(const uint8_t *current, uint8_t *next, int width, int heig
 void life_run_serial(const uint8_t *initial, uint8_t *final_grid, int width, int height, int steps, life_timing_t *timing);
 void life_dump_grid_ascii(const uint8_t *grid, int width, int height);
 int life_compare_grids(const uint8_t *left, const uint8_t *right, int width, int height);
+int life_write_pgm(const char *path, const uint8_t *grid, int width, int height);
 
 int life_local_row_count(int global_height, int size, int rank);
 int life_row_offset(int global_height, int size, int rank);

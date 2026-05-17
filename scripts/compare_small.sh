@@ -2,6 +2,7 @@
 set -eu
 
 MPI_RUNNER=""
+DECOMP="${DECOMP:-1d}"
 
 if command -v mpirun >/dev/null 2>&1; then
     MPI_RUNNER="mpirun"
@@ -12,4 +13,4 @@ else
     exit 1
 fi
 
-"$MPI_RUNNER" -n 2 ./bin/life_mpi --width 8 --height 8 --steps 4 --pattern glider --validate
+"$MPI_RUNNER" -n 2 ./bin/life_mpi --width 8 --height 8 --steps 4 --pattern glider --validate --decomposition "$DECOMP"

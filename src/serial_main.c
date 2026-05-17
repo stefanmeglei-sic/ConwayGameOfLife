@@ -36,6 +36,15 @@ int main(int argc, char **argv) {
            options.steps,
            timing.total_seconds);
 
+    if (options.pgm_final_path[0] != '\0') {
+        if (!life_write_pgm(options.pgm_final_path, final_grid, options.width, options.height)) {
+            fprintf(stderr, "Failed to write PGM file: %s\n", options.pgm_final_path);
+            free(initial);
+            free(final_grid);
+            return EXIT_FAILURE;
+        }
+    }
+
     if (options.dump_final) {
         life_dump_grid_ascii(final_grid, options.width, options.height);
     }

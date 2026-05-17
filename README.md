@@ -70,6 +70,30 @@ MPI with correctness check against the serial reference:
 mpirun -n 4 ./bin/life_mpi --width 32 --height 32 --steps 50 --pattern random --seed 7 --validate
 ```
 
+MPI with explicit decomposition mode:
+
+```sh
+mpirun -n 4 ./bin/life_mpi --width 128 --height 128 --steps 200 --pattern random --seed 7 --density 0.30 --decomposition 2d
+```
+
+MPI single-line CSV output (for automation):
+
+```sh
+mpirun -n 4 ./bin/life_mpi --width 128 --height 128 --steps 200 --pattern random --seed 7 --density 0.30 --csv
+```
+
+MPI snapshot output to PGM:
+
+```sh
+mpirun -n 4 ./bin/life_mpi --width 128 --height 128 --steps 200 --pattern random --seed 7 --density 0.30 --pgm-final coverage/final.pgm
+```
+
+MPI periodic snapshots every 20 generations:
+
+```sh
+mpirun -n 4 ./bin/life_mpi --width 128 --height 128 --steps 200 --pattern random --seed 7 --density 0.30 --snapshot-every 20 --snapshot-prefix coverage/life
+```
+
 ## Command line options
 
 - `--width N`
@@ -80,6 +104,31 @@ mpirun -n 4 ./bin/life_mpi --width 32 --height 32 --steps 50 --pattern random --
 - `--pattern random|glider|blinker|block|acorn`
 - `--dump-final`
 - `--validate` (MPI target only)
+- `--csv` (MPI target only)
+- `--csv-header` (MPI target only)
+- `--decomposition 1d|2d` (MPI target only)
+- `--pgm-final FILE`
+- `--snapshot-every N`
+- `--snapshot-prefix NAME`
+
+## Benchmark CSV export
+
+Generate strong and weak scaling CSV files under `coverage/`:
+
+```sh
+sh ./scripts/benchmark.sh 1024 1024 200 1 2 4 8
+```
+
+Use 2D Cartesian mode for benchmark generation:
+
+```sh
+DECOMP=2d sh ./scripts/benchmark.sh 1024 1024 200 1 2 4 8
+```
+
+Output files:
+
+- `coverage/strong_scaling.csv`
+- `coverage/weak_scaling.csv`
 
 ## Notes on decomposition
 
@@ -94,9 +143,9 @@ This keeps the first version simple while still using the required MPI communica
 
 ## Next iterations
 
-1. Add PGM/PPM snapshots for large-run visualization.
-2. Add benchmark output files for strong and weak scaling.
-3. Add 2D Cartesian decomposition with `MPI_Cart_create`.
-4. Separate computation and communication timing in more detail.
+1. Add finer timing split for 2D mode (row/column/corner exchange).
+2. Add input-file support for reproducible initial states.
+3. Add simple regression test automation for both 1D and 2D modes.
+4. Add optional UI layer that reuses the same simulation backend.
 
 The current working plan is tracked in `PLAN.md`.

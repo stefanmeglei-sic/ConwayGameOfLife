@@ -59,7 +59,13 @@ void life_print_usage(const char *program_name) {
             "  --density X\n"
             "  --pattern random|glider|blinker|block|acorn\n"
             "  --dump-final\n"
-            "  --validate\n",
+            "  --validate\n"
+            "  --csv\n"
+            "  --csv-header\n"
+            "  --decomposition 1d|2d\n"
+            "  --snapshot-every N\n"
+            "  --snapshot-prefix NAME\n"
+            "  --pgm-final FILE\n",
             program_name);
 }
 
@@ -74,6 +80,13 @@ int life_parse_options(int argc, char **argv, life_options_t *options, const cha
     options->pattern = LIFE_PATTERN_RANDOM;
     options->dump_final = 0;
     options->validate = 0;
+    options->csv = 0;
+    options->csv_header = 0;
+    options->snapshot_every = 0;
+    strncpy(options->snapshot_prefix, "snapshot", sizeof(options->snapshot_prefix) - 1);
+    options->snapshot_prefix[sizeof(options->snapshot_prefix) - 1] = '\0';
+    options->pgm_final_path[0] = '\0';
+    options->decomposition_2d = 0;
 
     for (index = 1; index < argc; ++index) {
         if (strcmp(argv[index], "--width") == 0 && index + 1 < argc) {
@@ -97,6 +110,28 @@ int life_parse_options(int argc, char **argv, life_options_t *options, const cha
             options->dump_final = 1;
         } else if (strcmp(argv[index], "--validate") == 0) {
             options->validate = 1;
+        } else if (strcmp(argv[index], "--csv") == 0) {
+            options->csv = 1;
+        } else if (strcmp(argv[index], "--csv-header") == 0) {
+            options->csv_header = 1;
+        } else if (strcmp(argv[index], "--decomposition") == 0 && index + 1 < argc) {
+            const char *mode = argv[++index];
+            if (strcmp(mode, "1d") == 0) {
+                options->decomposition_2d = 0;
+            } else if (strcmp(mode, "2d") == 0) {
+                options->decomposition_2d = 1;
+            } else {
+                *error_message = "decomposition must be 1d or 2d";
+                return 0;
+            }
+        } else if (strcmp(argv[index], "--snapshot-every") == 0 && index + 1 < argc) {
+            options->snapshot_every = atoi(argv[++index]);
+        } else if (strcmp(argv[index], "--snapshot-prefix") == 0 && index + 1 < argc) {
+            strncpy(options->snapshot_prefix, argv[++index], sizeof(options->snapshot_prefix) - 1);
+            options->snapshot_prefix[sizeof(options->snapshot_prefix) - 1] = '\0';
+        } else if (strcmp(argv[index], "--pgm-final") == 0 && index + 1 < argc) {
+            strncpy(options->pgm_final_path, argv[++index], sizeof(options->pgm_final_path) - 1);
+            options->pgm_final_path[sizeof(options->pgm_final_path) - 1] = '\0';
         } else {
             *error_message = "unknown or incomplete argument";
             return 0;
@@ -110,6 +145,11 @@ int life_parse_options(int argc, char **argv, life_options_t *options, const cha
 
     if (options->density < 0.0 || options->density > 1.0) {
         *error_message = "density must be in [0, 1]";
+        return 0;
+    }
+
+    if (options->snapshot_every < 0) {
+        *error_message = "snapshot-every must be >= 0";
         return 0;
     }
 
@@ -273,6 +313,43 @@ void life_dump_grid_ascii(const uint8_t *grid, int width, int height) {
 
 int life_compare_grids(const uint8_t *left, const uint8_t *right, int width, int height) {
     return memcmp(left, right, life_grid_size(width, height) * sizeof(uint8_t)) == 0;
+}
+
+int life_write_pgm(const char *path, const uint8_t *grid, int width, int height) {
+    FILE *out = fopen(path, "wb");
+    size_t total_cells;
+    size_t index;
+    uint8_t *pixels;
+
+    if (out == NULL) {
+        return 0;
+    }
+
+    if (fprintf(out, "P5\n%d %d\n255\n", width, height) < 0) {
+        fclose(out);
+        return 0;
+    }
+
+    total_cells = life_grid_size(width, height);
+    pixels = (uint8_t *) malloc(total_cells);
+    if (pixels == NULL) {
+        fclose(out);
+        return 0;
+    }
+
+    for (index = 0; index < total_cells; ++index) {
+        pixels[index] = grid[index] ? 255u : 0u;
+    }
+
+    if (fwrite(pixels, 1, total_cells, out) != total_cells) {
+        free(pixels);
+        fclose(out);
+        return 0;
+    }
+
+    free(pixels);
+    fclose(out);
+    return 1;
 }
 
 int life_local_row_count(int global_height, int size, int rank) {
