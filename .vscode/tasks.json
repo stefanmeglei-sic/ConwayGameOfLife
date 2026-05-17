@@ -1,0 +1,31 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build serial",
+      "type": "shell",
+      "command": "make serial",
+      "group": "build",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "build mpi",
+      "type": "shell",
+      "command": "make mpi",
+      "group": "build",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "run serial smoke",
+      "type": "shell",
+      "command": "./bin/life_serial --width 16 --height 16 --steps 10 --pattern glider --dump-final",
+      "dependsOn": "build serial"
+    },
+    {
+      "label": "run mpi validation",
+      "type": "shell",
+      "command": "sh ./scripts/compare_small.sh",
+      "dependsOn": "build mpi"
+    }
+  ]
+}
