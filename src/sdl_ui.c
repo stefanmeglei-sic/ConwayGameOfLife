@@ -10,6 +10,7 @@
 #include <SDL2/SDL.h>
 
 typedef enum {
+    /* Simple UI state machine: configure -> simulate -> inspect -> exit. */
     MODE_MENU,
     MODE_RUNNING,
     MODE_PAUSED,
@@ -107,6 +108,7 @@ static void zoom_at(sdl_context_t *ctx, int mouse_x, int mouse_y, int direction)
         return;
     }
 
+    /* Keep the cell under the cursor stable while changing zoom level. */
     int world_x = ctx->ui_state->pan_x + mouse_x;
     int world_y = ctx->ui_state->pan_y + mouse_y;
     int cell_x = world_x / old_cell_size;
@@ -127,6 +129,7 @@ enum {
 #define GLYPH(a, b, c, d, e, f, g) { (uint8_t)(a), (uint8_t)(b), (uint8_t)(c), (uint8_t)(d), (uint8_t)(e), (uint8_t)(f), (uint8_t)(g) }
 
 static void glyph_rows(char ch, uint8_t rows[7]) {
+    /* Built-in 5x7 bitmap font keeps HUD text dependency-free. */
     switch (ch) {
     case 'A': memcpy(rows, (uint8_t[7])GLYPH(0x0E, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11), 7); break;
     case 'B': memcpy(rows, (uint8_t[7])GLYPH(0x1E, 0x11, 0x11, 0x1E, 0x11, 0x11, 0x1E), 7); break;
@@ -243,6 +246,7 @@ static void update_title(SDL_Window *window, sdl_context_t *ctx) {
 }
 
 static void draw_hud_panel(sdl_context_t *ctx) {
+    /* HUD overlays controls/state without obscuring simulation logic. */
     SDL_SetRenderDrawBlendMode(ctx->renderer, SDL_BLENDMODE_BLEND);
     SDL_SetRenderDrawColor(ctx->renderer, 10, 10, 16, 210);
 
@@ -329,7 +333,7 @@ static void render_grid(sdl_context_t *ctx) {
     int win_w = ctx->ui_state->window_width;
     int win_h = ctx->ui_state->window_height;
 
-    /* Determine visible cell range */
+    /* Render only visible cells; world coordinates wrap toroidally. */
     int start_col = pan_x / cell_size;
     int start_row = pan_y / cell_size;
     int visible_cols = (win_w + cell_size - 1) / cell_size;
@@ -448,6 +452,7 @@ static void handle_window_event(sdl_context_t *ctx, const SDL_Event *event) {
         return;
     }
 
+    /* Keep cached dimensions in sync for viewport and HUD layout calculations. */
     if (event->window.event == SDL_WINDOWEVENT_RESIZED || event->window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
         ctx->ui_state->window_width = event->window.data1;
         ctx->ui_state->window_height = event->window.data2;
@@ -459,6 +464,7 @@ static void handle_pan_zoom_keys(sdl_context_t *ctx, const SDL_Event *event) {
         return;
     }
 
+    /* Navigation shortcuts operate on camera state, never on simulation state. */
     switch (event->key.keysym.sym) {
     case SDLK_i:
         zoom_at(ctx, ctx->ui_state->window_width / 2, ctx->ui_state->window_height / 2, 1);
@@ -559,7 +565,7 @@ int life_ui_sdl2_run(const life_options_t *options) {
 
     LIFE_LOG_INFO("UI started in MENU mode");
 
-    /* Main event loop */
+    /* Main loop drives state transitions and delegates behavior per mode. */
     int quit = 0;
     while (!quit && ctx.ui_state->running && ctx.mode != MODE_QUIT) {
         SDL_Event event;
@@ -572,7 +578,7 @@ int life_ui_sdl2_run(const life_options_t *options) {
             }
             render_menu(&ctx);
         } else if (ctx.mode == MODE_RUNNING) {
-            /* Running mode: initialize engine and run */
+            /* Running mode lazily creates engine from current menu parameters. */
             if (ctx.engine == NULL) {
                 LIFE_LOG_INFO("Starting simulation: %dx%d, pattern=%d, seed=%u",
                                ctx.width, ctx.height, ctx.pattern, ctx.seed);
@@ -584,6 +590,7 @@ int life_ui_sdl2_run(const life_options_t *options) {
                     break;
                 }
 
+                /* Clone CLI options, then override with current menu selections. */
                 life_options_t sim_options = *options;
                 sim_options.width = ctx.width;
                 sim_options.height = ctx.height;
@@ -602,7 +609,7 @@ int life_ui_sdl2_run(const life_options_t *options) {
                 ctx.generation = 0;
             }
 
-            /* Run one step at a time */
+            /* Poll input continuously so pause/quit remains responsive during run. */
             while (SDL_PollEvent(&event)) {
                 handle_window_event(&ctx, &event);
                 handle_pan_zoom_keys(&ctx, &event);
@@ -624,6 +631,7 @@ int life_ui_sdl2_run(const life_options_t *options) {
                 continue;
             }
 
+            /* Advance one generation per frame in running mode. */
             if (life_engine_step(ctx.engine) == 0) {
                 ctx.generation++;
                 ctx.population = count_population(life_engine_current_grid(ctx.engine),
@@ -638,7 +646,7 @@ int life_ui_sdl2_run(const life_options_t *options) {
                 ctx.mode = MODE_PAUSED;
             }
         } else if (ctx.mode == MODE_PAUSED) {
-            /* Paused mode: wait for user action */
+            /* Paused mode prioritizes control actions, including single-step debug. */
             if (SDL_WaitEventTimeout(&event, 100)) {
                 handle_window_event(&ctx, &event);
                 handle_pan_zoom_keys(&ctx, &event);
@@ -696,7 +704,7 @@ int life_ui_sdl2_run(const life_options_t *options) {
 
     LIFE_LOG_INFO("UI mode ended: %d", ctx.mode);
 
-    /* Cleanup */
+    /* Preserve final frame before teardown so callers can reuse/export if needed. */
     if (ctx.engine) {
         life_engine_copy_current(ctx.engine, final_grid);
         life_engine_destroy(ctx.engine);

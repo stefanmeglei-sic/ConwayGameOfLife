@@ -8,6 +8,7 @@ int main(int argc, char **argv) {
     life_options_t options;
     const char *error_message = NULL;
 
+    /* UI runner reuses the same CLI parser as serial/MPI for consistent flags. */
     if (life_parse_options(argc, argv, &options, &error_message) < 0) {
         if (error_message) {
             fprintf(stderr, "Error: %s\n", error_message);
@@ -21,6 +22,7 @@ int main(int argc, char **argv) {
                    options.width, options.height, options.pattern, options.steps, 
                    options.seed, options.density);
 
+    /* SDL front-end consumes parsed options and manages interactive lifecycle. */
     int ret = life_ui_sdl2_run(&options);
     if (ret < 0) {
         LIFE_LOG_ERROR("SDL2 UI failed");
