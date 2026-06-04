@@ -6,6 +6,7 @@
 
 #define LIFE_PATH_MAX 256
 
+/* Supported deterministic/random initial states. */
 typedef enum {
     LIFE_PATTERN_RANDOM = 0,
     LIFE_PATTERN_GLIDER,
@@ -14,6 +15,7 @@ typedef enum {
     LIFE_PATTERN_ACORN
 } life_pattern_t;
 
+/* Shared runtime options used by serial, MPI, and UI entry points. */
 typedef struct {
     int width;
     int height;
@@ -31,12 +33,14 @@ typedef struct {
     int decomposition_2d;
 } life_options_t;
 
+/* Aggregated timing metrics for one run. */
 typedef struct {
     double total_seconds;
     double communication_seconds;
     double computation_seconds;
 } life_timing_t;
 
+/* Reusable serial engine state used by CLI/UI front-ends. */
 typedef struct {
     int width;
     int height;
@@ -45,11 +49,14 @@ typedef struct {
     uint8_t *next;
 } life_engine_t;
 
+/* Return 0 from callback to stop an in-progress run early. */
 typedef int (*life_generation_callback_t)(const life_engine_t *engine, void *user_data);
 
+/* CLI/options helpers. */
 int life_parse_options(int argc, char **argv, life_options_t *options, const char **error_message);
 void life_print_usage(const char *program_name);
 
+/* Grid and serial stepping helpers. */
 size_t life_grid_size(int width, int height);
 uint8_t *life_allocate_grid(int width, int height);
 void life_initialize_grid(uint8_t *grid, int width, int height, const life_options_t *options);
@@ -60,6 +67,7 @@ void life_dump_grid_ascii(const uint8_t *grid, int width, int height);
 int life_compare_grids(const uint8_t *left, const uint8_t *right, int width, int height);
 int life_write_pgm(const char *path, const uint8_t *grid, int width, int height);
 
+/* Engine lifecycle API for shared serial backend execution. */
 int life_engine_init(life_engine_t *engine, int width, int height, const life_options_t *options);
 int life_engine_init_from_grid(life_engine_t *engine, int width, int height, const uint8_t *initial_grid);
 void life_engine_destroy(life_engine_t *engine);
@@ -74,6 +82,7 @@ int life_run_with_options(const life_options_t *options,
                           life_generation_callback_t callback,
                           void *user_data);
 
+/* Rank partition helpers for row-wise decomposition. */
 int life_local_row_count(int global_height, int size, int rank);
 int life_row_offset(int global_height, int size, int rank);
 

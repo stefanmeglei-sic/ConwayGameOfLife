@@ -3,6 +3,7 @@
 
 #include "life.h"
 
+/* Front-end state container used by interactive UI loops. */
 typedef struct {
     int window_width;
     int window_height;
@@ -15,13 +16,13 @@ typedef struct {
     int pan_y;
 } life_ui_state_t;
 
-/* SDL2 graphical UI main loop
-   Returns 0 on success, -1 on error (SDL2 not available, etc.)
+/* SDL2 graphical UI main loop.
+   Returns 0 on success, -1 on error (SDL2 unavailable, init failure, etc.).
 */
 int life_ui_sdl2_run(const life_options_t *options);
 
-/* Terminal/ncurses UI main loop (future)
-   Returns 0 on success, -1 on error
+/* Terminal/ncurses UI entry point (reserved for future implementation).
+   Returns 0 on success, -1 on error.
 */
 int life_ui_terminal_run(const life_options_t *options);
 
