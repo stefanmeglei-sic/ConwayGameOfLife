@@ -1,6 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 
+# Reproducible large-grid smoke test used as report evidence.
 OUT_DIR="${OUT_DIR:-coverage}"
 LOG_FILE="${LOG_FILE:-$OUT_DIR/large_grid_10k.log}"
 MPI_RANKS="${MPI_RANKS:-4}"
@@ -19,6 +20,7 @@ mkdir -p "$OUT_DIR"
     echo ""
 
     echo "## MPI 10k x 10k (2D)"
+    # Keep CSV mode so the output line is easy to parse and cite in reports.
     mpirun -n "$MPI_RANKS" $MPI_EXTRA_ARGS ./bin/life_mpi --width 10000 --height 10000 --steps 5 --pattern random --seed 7 --density 0.30 --decomposition 2d --csv
 } | tee "$LOG_FILE"
 

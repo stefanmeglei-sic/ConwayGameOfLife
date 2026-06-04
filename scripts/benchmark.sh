@@ -1,6 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 
+# Prefer mpirun, but accept mpiexec for runtime portability.
 MPI_RUNNER=""
 
 if command -v mpirun >/dev/null 2>&1; then
@@ -25,6 +26,7 @@ STEPS="${3:-200}"
 shift $(( $# > 3 ? 3 : $# )) || true
 RANKS="${*:-1 2 4 8}"
 
+# Each run appends one machine-readable line for downstream summary scripts.
 echo "ranks,width,height,steps,total_seconds,communication_seconds,computation_seconds" > "$STRONG_CSV"
 echo "ranks,width,height,steps,total_seconds,communication_seconds,computation_seconds" > "$WEAK_CSV"
 

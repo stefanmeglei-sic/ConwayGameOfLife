@@ -1,6 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 
+# Tiny deterministic case for quick serial-vs-MPI correctness checks.
 MPI_RUNNER=""
 DECOMP="${DECOMP:-1d}"
 
