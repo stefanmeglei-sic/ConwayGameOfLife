@@ -57,6 +57,7 @@ void life_log_init(const char *component, int rank) {
         g_component[sizeof(g_component) - 1] = '\0';
     }
 
+    /* Optional per-rank log sink: <prefix>.<component>.rankN.log */
     if (file_env != NULL && file_env[0] != '\0') {
         char path[512];
         int written = snprintf(path, sizeof(path), "%s.%s.rank%d.log", file_env, g_component, g_rank);
@@ -109,6 +110,7 @@ void life_log_message(life_log_level_t level, const char *source_file, int sourc
     fputc('\n', stderr);
     fflush(stderr);
 
+    /* Mirror stderr output to file when LIFE_LOG_FILE is configured. */
     if (g_file != NULL) {
         fprintf(g_file,
                 "%s [%s] [%s] [rank=%d] %s:%d: ",

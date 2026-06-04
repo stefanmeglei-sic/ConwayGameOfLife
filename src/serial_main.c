@@ -30,6 +30,7 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
+    /* Serial CLI delegates simulation logic to the shared backend engine. */
     if (!life_run_with_options(&options, final_grid, &timing, NULL, NULL)) {
         LIFE_LOG_ERROR("Backend run failed (width=%d, height=%d, steps=%d)",
                        options.width,

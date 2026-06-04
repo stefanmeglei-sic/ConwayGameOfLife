@@ -72,6 +72,7 @@ void life_print_usage(const char *program_name) {
 int life_parse_options(int argc, char **argv, life_options_t *options, const char **error_message) {
     int index;
 
+    /* Keep defaults centralized so CLI/UI/MPI start from identical baseline behavior. */
     options->width = 64;
     options->height = 64;
     options->steps = 100;
@@ -252,6 +253,7 @@ static int count_neighbors(const uint8_t *grid, int width, int height, int row, 
 void life_step_serial(const uint8_t *current, uint8_t *next, int width, int height) {
     int row;
 
+    /* Toroidal neighborhood update for one full generation. */
     for (row = 0; row < height; ++row) {
         int column;
         for (column = 0; column < width; ++column) {
@@ -395,6 +397,7 @@ int life_engine_run(life_engine_t *engine, int steps, life_generation_callback_t
             return 0;
         }
 
+        /* Callback can stop execution early (used by interactive front-ends). */
         if (callback != NULL) {
             if (!callback(engine, user_data)) {
                 return 0;
@@ -443,6 +446,7 @@ int life_run_with_options(const life_options_t *options,
         return 0;
     }
 
+    /* Timing here represents the shared serial backend execution path. */
     start_clock = clock();
     if (!life_engine_run(&engine, options->steps, callback, user_data)) {
         life_engine_destroy(&engine);

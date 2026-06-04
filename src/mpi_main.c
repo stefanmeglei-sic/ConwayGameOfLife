@@ -224,6 +224,7 @@ static int gather_global_2d(MPI_Comm cart_comm,
                             int global_w,
                             int dims[2],
                             uint8_t *global_out) {
+    /* Gather variable-size 2D tiles on rank 0 according to Cartesian coordinates. */
     int packed_size = local_h * local_w;
     uint8_t *packed = (uint8_t *) malloc((size_t) packed_size);
     if (packed == NULL) {
@@ -299,6 +300,7 @@ static int run_mpi_2d(const life_options_t *options, int rank, int size) {
     double max_communication_seconds = 0.0;
     double max_computation_seconds = 0.0;
 
+    /* Let MPI choose a near-square process grid, then make it periodic in both axes. */
     MPI_Dims_create(size, 2, dims);
     MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periods, 0, &cart_comm);
     if (cart_comm == MPI_COMM_NULL) {
@@ -322,6 +324,7 @@ static int run_mpi_2d(const life_options_t *options, int rank, int size) {
         return EXIT_FAILURE;
     }
 
+    /* Only gather global state when output/validation paths require it. */
     need_gathered_grid =
         options->dump_final ||
         options->validate ||
@@ -512,6 +515,7 @@ static int run_mpi_2d(const life_options_t *options, int rank, int size) {
         send_sw = current[local_index(local_h, 1, stride)];
         send_se = current[local_index(local_h, local_w, stride)];
 
+        /* Post all halo exchanges first, then compute interior while messages are in flight. */
         comm_start = MPI_Wtime();
         MPI_Irecv(&current[local_index(0, 1, stride)], local_w, MPI_UNSIGNED_CHAR, north, 100, cart_comm, &requests[req_count++]);
         MPI_Irecv(&current[local_index(local_h + 1, 1, stride)], local_w, MPI_UNSIGNED_CHAR, south, 101, cart_comm, &requests[req_count++]);
@@ -724,6 +728,7 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
+    /* Reuse same gather condition in 1D path to avoid unnecessary global collectives. */
     need_gathered_grid =
         options.dump_final ||
         options.validate ||
@@ -826,6 +831,7 @@ int main(int argc, char **argv) {
         double comp_end;
         uint8_t *swap_grid;
 
+        /* Exchange ghost rows, compute interior rows, then finish border rows after wait. */
         comm_start = MPI_Wtime();
         MPI_Irecv(&current[local_index(0, 0, width)], width, MPI_UNSIGNED_CHAR, top_neighbor, 100, MPI_COMM_WORLD, &requests[0]);
         MPI_Irecv(&current[local_index(local_rows + 1, 0, width)], width, MPI_UNSIGNED_CHAR, bottom_neighbor, 101, MPI_COMM_WORLD, &requests[1]);
