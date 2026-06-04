@@ -1,28 +1,27 @@
 # Conway Game of Life with MPI
 
-This repository implements the project from `docs/tema1.txt`: a Linux-friendly Conway's Game of Life simulator in C, with:
+This repository implements a Linux-friendly Conway's Game of Life simulator in C, with:
 
 - a serial reference implementation
-- an MPI distributed implementation using row decomposition
+- an MPI distributed implementation with 1D and 2D decomposition
 - non-blocking halo exchange with `MPI_Isend` and `MPI_Irecv`
 - periodic (toroidal) boundaries
 - deterministic pattern generation for validation
 
 ## Project status
 
-The current baseline is intentionally narrow and testable:
+Current implementation includes:
 
 - serial simulator for correctness reference
-- MPI simulator with 1D row striping
-- overlap-friendly exchange pattern: compute interior rows while halo rows are in flight
-- optional serial-vs-MPI validation on rank 0
+- MPI simulator with selectable decomposition: `--decomposition 1d|2d`
+- overlap-friendly non-blocking halo exchange
+- serial-vs-MPI validation on rank 0 (`--validate`)
+- benchmark scripts and report-ready summary/plot generation
 
-This is a workable version to iterate on. A 2D Cartesian decomposition and more advanced profiling can be added next.
-
-Latest local validation snapshot:
+Latest local checks:
 
 - `sh ./scripts/compare_small.sh` -> `validation: OK`
-- `mpirun -n 4 ./bin/life_mpi --width 64 --height 64 --steps 50 --pattern random --seed 7 --density 0.30 --validate` -> `validation: OK`
+- `mpirun -n 4 --oversubscribe ./bin/life_mpi --width 64 --height 64 --steps 50 --pattern random --seed 7 --density 0.30 --validate --decomposition 2d` -> `validation: OK`
 
 ## Requirements
 
@@ -37,6 +36,11 @@ sudo apt update
 sudo apt install openmpi-bin libopenmpi-dev
 ```
 
+Optional tools (not required for the core C/MPI workflow):
+
+- `python3` for helper scripts (`summarize_benchmarks.py`, `generate_svg_plots.py`)
+- `soffice` (LibreOffice) for Markdown -> `.docx` conversion
+
 ## Build
 
 ```sh
@@ -44,6 +48,18 @@ make serial
 make mpi
 make ui       # requires SDL2 (see below)
 ```
+
+Quick smoke test after build:
+
+```sh
+./bin/life_serial --width 32 --height 16 --steps 20 --pattern glider --dump-final
+mpirun -n 4 ./bin/life_mpi --width 128 --height 128 --steps 100 --pattern random --seed 7 --density 0.30 --decomposition 2d --csv
+```
+
+If your machine has fewer slots than requested ranks, use one of:
+
+- `mpirun -n 8 --oversubscribe ...`
+- `OMPI_MCA_rmaps_base_oversubscribe=1 mpirun -n 8 ...`
 
 If MPI is installed in a non-default location:
 
@@ -58,16 +74,19 @@ The optional SDL2 graphical UI is built with `make ui` if SDL2 development libra
 **Installation:**
 
 Ubuntu/Debian:
+
 ```sh
 sudo apt install libsdl2-dev pkg-config
 ```
 
 Fedora/RHEL:
+
 ```sh
 sudo dnf install SDL2-devel pkg-config
 ```
 
 macOS:
+
 ```sh
 brew install sdl2 pkg-config
 ```
@@ -163,7 +182,7 @@ MPI periodic snapshots every 20 generations:
 mpirun -n 4 ./bin/life_mpi --width 128 --height 128 --steps 200 --pattern random --seed 7 --density 0.30 --snapshot-every 20 --snapshot-prefix coverage/life
 ```
 
-### SDL2 Graphical UI
+### SDL2 Graphical UI Controls
 
 The graphical UI is **interactive and menu-driven**. It starts with a configuration menu where you can set the game parameters, then displays the simulation in a window.
 
@@ -239,16 +258,129 @@ Output files:
 - `coverage/strong_scaling.csv`
 - `coverage/weak_scaling.csv`
 
+## Validation and test scripts
+
+Fast correctness check (default 1D):
+
+```sh
+sh ./scripts/compare_small.sh
+```
+
+Fast correctness check (2D):
+
+```sh
+DECOMP=2d sh ./scripts/compare_small.sh
+```
+
+Explicit 2D validation run:
+
+```sh
+mpirun -n 4 --oversubscribe ./bin/life_mpi --width 64 --height 64 --steps 50 --pattern random --seed 7 --density 0.30 --validate --decomposition 2d
+```
+
+Large-grid smoke test script (serial + MPI 2D 10k x 10k):
+
+```sh
+sh ./scripts/run_large_grid_check.sh
+```
+
+Output log:
+
+- `coverage/large_grid_10k.log`
+
+## Benchmark, summary, and graph pipeline
+
+The project supports two usage modes:
+
+- **Mode A (recommended): C/MPI-first, no Python environment management**
+- **Mode B (optional): local Python virtual environment for helper scripts**
+
+### Mode A: C/MPI-first (no venv)
+
+1. Generate raw benchmark CSVs for 1D and 2D under separate folders:
+
+```sh
+OUT_DIR=coverage/bench_1d sh ./scripts/benchmark.sh 1024 1024 200 1 2 4 8
+OUT_DIR=coverage/bench_2d DECOMP=2d sh ./scripts/benchmark.sh 1024 1024 200 1 2 4 8
+```
+
+1. Build report-ready summary CSV/Markdown:
+
+```sh
+python3 ./scripts/summarize_benchmarks.py
+```
+
+Generated files:
+
+- `coverage/report_ready/strong_scaling_summary.csv`
+- `coverage/report_ready/weak_scaling_summary.csv`
+- `coverage/report_ready/benchmark_summary.md`
+
+1. Generate SVG plots (no matplotlib required):
+
+```sh
+python3 ./scripts/generate_svg_plots.py
+```
+
+### Mode B: Optional local Python virtual environment
+
+Use this only if you prefer isolating helper-script execution from your system Python.
+
+Create and activate a local venv:
+
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+```
+
+Run helper scripts inside the venv:
+
+```sh
+python ./scripts/summarize_benchmarks.py
+python ./scripts/generate_svg_plots.py
+```
+
+Deactivate when done:
+
+```sh
+deactivate
+```
+
+Note: the current helper scripts use only Python standard library modules, so no `pip install` step is required.
+
+Generated plot files:
+
+- `coverage/report_ready/plots/strong_speedup.svg`
+- `coverage/report_ready/plots/strong_efficiency.svg`
+- `coverage/report_ready/plots/strong_comm_vs_compute.svg`
+- `coverage/report_ready/plots/weak_relative_time.svg`
+- `coverage/report_ready/plots/weak_communication_percent.svg`
+
+Figure-numbered aliases used by the final report:
+
+- `coverage/report_ready/plots/figura1.svg`
+- `coverage/report_ready/plots/figura2.svg`
+- `coverage/report_ready/plots/figura3.svg`
+- `coverage/report_ready/plots/figura4.svg`
+- `coverage/report_ready/plots/figura5.svg`
+
+## Report conversion to Word
+
+Convert a Markdown report to `.docx` (LibreOffice):
+
+```sh
+soffice --headless --convert-to docx --outdir . ./report_final.md
+```
+
+Typical output file:
+
+- `./report_final.docx`
+
 ## Notes on decomposition
 
-The MPI baseline uses 1D row decomposition because it is the smallest correct distributed design that satisfies the project brief:
-
-- each process owns a contiguous band of rows
-- left/right neighbors are local because rows remain full-width
-- top/bottom ghost rows are exchanged with adjacent MPI ranks
-- periodic wrapping across ranks implements the toroidal vertical boundary
-
-This keeps the first version simple while still using the required MPI communication pattern.
+- `1d`: row striping with top/bottom halo exchange.
+- `2d`: Cartesian-style block decomposition with row/column/corner halo exchange.
+- Both modes use non-blocking communication and periodic boundaries.
 
 ## Next iterations
 
