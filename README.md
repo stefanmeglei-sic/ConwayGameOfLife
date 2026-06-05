@@ -356,37 +356,8 @@ Generated plot files:
 - `coverage/report_ready/plots/weak_relative_time.svg`
 - `coverage/report_ready/plots/weak_communication_percent.svg`
 
-Figure-numbered aliases used by the final report:
-
-- `coverage/report_ready/plots/figura1.svg`
-- `coverage/report_ready/plots/figura2.svg`
-- `coverage/report_ready/plots/figura3.svg`
-- `coverage/report_ready/plots/figura4.svg`
-- `coverage/report_ready/plots/figura5.svg`
-
-## Report conversion to Word
-
-Convert a Markdown report to `.docx` (LibreOffice):
-
-```sh
-soffice --headless --convert-to docx --outdir . ./report_final.md
-```
-
-Typical output file:
-
-- `./report_final.docx`
-
 ## Notes on decomposition
 
 - `1d`: row striping with top/bottom halo exchange.
 - `2d`: Cartesian-style block decomposition with row/column/corner halo exchange.
 - Both modes use non-blocking communication and periodic boundaries.
-
-## Next iterations
-
-1. Add finer timing split for 2D mode (row/column/corner exchange).
-2. Add input-file support for reproducible initial states.
-3. Add simple regression test automation for both 1D and 2D modes.
-4. Add optional UI layer that reuses the same simulation backend.
-
-The current working plan is tracked in `PLAN.md`.
