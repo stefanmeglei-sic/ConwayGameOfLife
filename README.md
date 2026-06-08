@@ -247,6 +247,12 @@ Generate strong and weak scaling CSV files under `coverage/`:
 sh ./scripts/benchmark.sh 1024 1024 200 1 2 4 8
 ```
 
+If your local Open MPI install refuses higher rank counts because of slot limits, pass `MPI_EXTRA_ARGS=--oversubscribe`:
+
+```sh
+MPI_EXTRA_ARGS=--oversubscribe sh ./scripts/benchmark.sh 1024 1024 200 1 2 4 8
+```
+
 Use 2D Cartesian mode for benchmark generation:
 
 ```sh
