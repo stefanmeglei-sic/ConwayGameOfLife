@@ -249,6 +249,9 @@ sh ./scripts/benchmark.sh 1024 1024 200 1 2 4 8
 
 If your local Open MPI install refuses higher rank counts because of slot limits, pass `MPI_EXTRA_ARGS=--oversubscribe`:
 
+OUT_DIR=coverage/bench_1d MPI_EXTRA_ARGS=--oversubscribe sh ./scripts/benchmark.sh 1024 1024 200 1 2 4 8
+OUT_DIR=coverage/bench_2d DECOMP=2d MPI_EXTRA_ARGS=--oversubscribe sh ./scripts/benchmark.sh 1024 1024 200 1 2 4 8
+
 ```sh
 MPI_EXTRA_ARGS=--oversubscribe sh ./scripts/benchmark.sh 1024 1024 200 1 2 4 8
 ```
